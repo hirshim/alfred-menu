@@ -1,15 +1,11 @@
 ObjC.import('stdlib');
 ObjC.import('Foundation');
 
-// Workflow path (Alfred provides this env var; fallback for CLI debugging)
 var wfPath;
 try {
     wfPath = ObjC.unwrap($.getenv('alfred_workflow_path'));
 } catch (e) {
-    // Running outside Alfred (e.g. osascript from terminal)
-    wfPath = ObjC.unwrap(
-        $.NSFileManager.defaultManager.currentDirectoryPath
-    );
+    wfPath = ObjC.unwrap($.NSFileManager.defaultManager.currentDirectoryPath);
 }
 
 function loadScript(name) {
@@ -27,15 +23,23 @@ function loadScript(name) {
 function run(argv) {
     try {
         loadScript('menu-reader.js');
-        loadScript('oauth2.js');
         loadScript('sheets-writer.js');
 
-        // Load config
-        var config = OAuth2.loadConfig();
-        if (!config || !config.spreadsheet_id) {
-            return 'エラー: config.json にスプレッドシートIDが設定されていません。' +
-                OAuth2._getDataDir() + '/config.json を作成してください。';
+        // Get config from Alfred User Configuration (environment variables)
+        var gasUrl;
+        try {
+            gasUrl = ObjC.unwrap($.getenv('gas_url'));
+        } catch (e) {
+            gasUrl = '';
         }
+        if (!gasUrl) {
+            return 'エラー: GAS Web App URL が未設定です。Alfredの Workflow設定画面で URL を入力してください。';
+        }
+
+        var includeDisabled = false;
+        try {
+            includeDisabled = ObjC.unwrap($.getenv('include_disabled')) === '1';
+        } catch (e) {}
 
         // Get frontmost app's menu items
         var se = Application('System Events');
@@ -49,18 +53,13 @@ function run(argv) {
             return 'エラー: アクセシビリティ権限がありません。システム設定 > プライバシーとセキュリティ > アクセシビリティ で Alfred を許可してください。';
         }
 
-        // Read menu items (respect include_disabled_items config)
-        var includeDisabled = config.include_disabled_items || false;
         var menuItems = MenuReader.readAllMenuItems(frontProcess, includeDisabled);
         if (menuItems.length === 0) {
             return 'エラー: ' + appName + ' のメニュー項目を取得できませんでした。';
         }
 
-        // Get access token (may trigger browser auth flow on first run)
-        var accessToken = OAuth2.getAccessToken();
-
-        // Write to Google Sheets
-        var result = SheetsWriter.writeMenuData(appName, menuItems, config, accessToken);
+        // Send to GAS Web App
+        var result = SheetsWriter.writeMenuData(gasUrl, appName, menuItems);
 
         return appName + 'のメニュー項目をスプレッドシートに書き込みました（' + result.count + '件 → ' + result.sheetName + '）';
     } catch (e) {

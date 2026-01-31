@@ -6,15 +6,21 @@
 
 - Alfred のキーワード `menulist` で起動する
 - 起動時点の最前面アプリのメニューバーを走査し、全メニュー項目を再帰的に取得する
-- 取得したメニュー項目をGoogle Sheets APIを使ってスプレッドシートに書き込む
+- Google Apps Script Web App を経由してスプレッドシートに書き込む
 
 ## 技術スタック
 
 - **実装言語**: JXA (JavaScript for Automation)
   - メニュー項目の取得に System Events の Accessibility API を使用する
-  - Google Sheets API との通信には JXA 内から `curl` を `$.NSTask` または `app.doShellScript()` で呼び出す
-- **Alfred Workflow**: Script Filter または Run Script で JXA スクリプトを実行
-- **Google Sheets API v4**: OAuth2 認証でスプレッドシートに書き込む
+  - GAS Web App への通信には JXA 内から NSTask + curl で HTTP POST する
+- **Alfred Workflow**: Run Script で JXA スクリプトを実行、User Configuration で設定管理
+- **Google Apps Script**: スプレッドシートへの書き込みを処理する Web App
+
+## インストール手順
+
+1. `.alfredworkflow` をダブルクリックしてインストール
+2. Googleスプレッドシートを開き、拡張機能 > Apps Script で `gas/menulist.gs` のコードを貼り付けてデプロイ
+3. Alfred の Workflow 設定画面で Web App URL を入力
 
 ## メニュー項目の取得仕様
 
@@ -61,39 +67,36 @@
 
 - 階層がない列は空欄にする
 - 1行目にはヘッダー行を入れる: `修飾キー`, `メインキー`, `Level1`, `Level2`, `Level3`, ...
-- アプリ名はシート名として使用する
-
-## Google Sheets API 連携
-
-### 認証方式
-
-- OAuth2 認証を使用する
-- Google Cloud Console でプロジェクトを作成し、OAuth2 クライアントID（デスクトップアプリ）を発行する
-- 必要なスコープ: `https://www.googleapis.com/auth/spreadsheets`
-
-### 認証フロー
-
-1. 初回起動時にブラウザを開いてGoogle認証を行う
-2. 認証コードをリダイレクトまたは手動入力で受け取る
-3. アクセストークンとリフレッシュトークンを Workflow のデータディレクトリに保存する
-4. 2回目以降はリフレッシュトークンで自動的にアクセストークンを更新する
-
-### トークン保存先
-
-```
-~/Library/Application Support/Alfred/Workflow Data/<bundle-id>/
-├── credentials.json    # OAuth2クライアントID・シークレット
-├── token.json          # アクセストークン・リフレッシュトークン
-└── config.json         # スプレッドシートIDなどの設定
-```
-
-### 書き込み動作
-
-- 指定されたスプレッドシートIDに対して書き込む
 - シート名は「アプリ名_作成日」にする（例: "Finder_2026-01-31", "Safari_2026-01-31"）
 - 日付フォーマット: `YYYY-MM-DD`
 - 同名のシートが既に存在する場合はクリアしてから上書きする（同日に再実行した場合）
 - シートが存在しない場合は新規作成する
+
+## Google Apps Script 連携
+
+### 仕組み
+
+- GAS を Web App としてデプロイし、Alfred Workflow から HTTP POST でメニューデータを送信する
+- GAS 側でシートの作成・クリア・データ書き込みをすべて処理する
+- OAuth2 認証やトークン管理は不要（GAS がスプレッドシートのオーナー権限で動作する）
+
+### 送信データ形式
+
+```json
+{
+  "appName": "Finder",
+  "date": "2026-01-31",
+  "menuItems": [
+    { "path": ["ファイル", "新規Finderウインドウ"], "modifiers": "⌘", "key": "N" },
+    ...
+  ]
+}
+```
+
+### GAS のデプロイ設定
+
+- 実行ユーザー: 自分
+- アクセス: 全員
 
 ## Alfred Workflow 構成
 
@@ -107,14 +110,21 @@
 ```
 [Keyword: menulist]
     ↓
-[Run Script (JXA)]  ← メニュー取得 + Google Sheets 書き込み
+[Run Script (JXA)]  ← メニュー取得 + GAS Web App に POST
     ↓
 [Post Notification]  ← 完了通知
 ```
 
+### User Configuration（Workflow 設定画面）
+
+| 変数名 | 型 | 説明 |
+|--------|-----|------|
+| `gas_url` | テキスト | GAS Web App の URL（必須） |
+| `include_disabled` | チェックボックス | 無効メニュー項目も含めるか |
+
 ### 通知
 
-- 成功時: 「{アプリ名}のメニュー項目をスプレッドシートに書き込みました（{件数}件）」
+- 成功時: 「{アプリ名}のメニュー項目をスプレッドシートに書き込みました（{件数}件 → {シート名}）」
 - エラー時: エラー内容を通知に表示
 
 ## ディレクトリ構成
@@ -124,12 +134,12 @@ alfred-menu/
 ├── CLAUDE.md
 ├── info.plist              # Alfred Workflow定義ファイル
 ├── icon.png                # Workflowアイコン
-├── scripts/
-│   ├── main.js             # エントリーポイント（JXA）
-│   ├── menu-reader.js      # メニュー項目取得ロジック
-│   ├── sheets-writer.js    # Google Sheets API書き込み
-│   └── oauth2.js           # OAuth2認証フロー
-└── README.md               # セットアップ手順（任意）
+├── gas/
+│   └── menulist.gs         # GAS テンプレート（ユーザーがコピペ）
+└── scripts/
+    ├── main.js             # エントリーポイント（JXA）
+    ├── menu-reader.js      # メニュー項目取得ロジック
+    └── sheets-writer.js    # GAS Web App への HTTP POST
 ```
 
 ## 開発上の注意点
@@ -137,7 +147,7 @@ alfred-menu/
 ### アクセシビリティ権限
 
 - メニュー項目の取得には「アクセシビリティ」権限が必要
-- System Preferences > Security & Privacy > Privacy > Accessibility で Alfred に権限を付与する必要がある
+- システム設定 > プライバシーとセキュリティ > アクセシビリティ で Alfred に権限を付与する必要がある
 - 権限がない場合は分かりやすいエラーメッセージを表示する
 
 ### JXA での System Events アクセス
@@ -158,22 +168,9 @@ const menuBar = frontApp.menuBars[0];
 ### エラーハンドリング
 
 - アクセシビリティ権限なし → ユーザーに権限付与を案内
-- Google認証未済 → 認証フローを開始
-- トークン期限切れ → リフレッシュトークンで再取得、失敗時は再認証
-- スプレッドシートIDが未設定 → 設定方法を案内
-- ネットワークエラー → リトライまたはエラー通知
-
-## 設定項目（config.json）
-
-```json
-{
-  "spreadsheet_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "include_disabled_items": false
-}
-```
-
-- `spreadsheet_id`: 書き込み先のGoogleスプレッドシートのID
-- `include_disabled_items`: 無効（グレーアウト）なメニュー項目も含めるかどうか
+- GAS URL 未設定 → Workflow 設定画面への案内
+- GAS Web App からのエラー → エラー通知
+- ネットワークエラー → エラー通知
 
 ## リリース
 
@@ -195,13 +192,11 @@ alfred-menu.alfredworkflow (zip)
 └── scripts/
     ├── main.js
     ├── menu-reader.js
-    ├── sheets-writer.js
-    └── oauth2.js
+    └── sheets-writer.js
 ```
 
 ### パッケージに含めないファイル
 
 - `CLAUDE.md` — 開発用ドキュメント
-- `README.md` — リポジトリ用ドキュメント
-- `credentials.json`, `token.json`, `config.json` — ユーザー固有の認証・設定ファイル
+- `gas/` — GAS テンプレート（リポジトリからコピペして使う）
 - `.git/` — バージョン管理

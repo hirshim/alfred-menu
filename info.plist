@@ -137,9 +137,48 @@
 			<integer>200</integer>
 		</dict>
 	</dict>
+	<key>userconfigurationconfig</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string>https://script.google.com/macros/s/xxxxx/exec</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Google Apps Script Web App のURL。スプレッドシートの Apps Script でデプロイ後に取得できます。</string>
+			<key>label</key>
+			<string>GAS Web App URL</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>gas_url</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<false/>
+			</dict>
+			<key>description</key>
+			<string>有効にすると、グレーアウトされた無効なメニュー項目も取得します。</string>
+			<key>label</key>
+			<string>無効なメニュー項目も含める</string>
+			<key>type</key>
+			<string>checkbox</string>
+			<key>variable</key>
+			<string>include_disabled</string>
+		</dict>
+	</array>
 	<key>version</key>
-	<string>1.0.0</string>
+	<string>2.0.0</string>
 	<key>webaddress</key>
-	<string></string>
+	<string>https://github.com/hirshim/alfred-menu</string>
 </dict>
 </plist>
