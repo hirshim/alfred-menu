@@ -34,6 +34,32 @@
 				<false/>
 			</dict>
 		</array>
+		<key>A1B2C3D4-1111-2222-3333-444455559999</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>A1B2C3D4-1111-2222-3333-44445555AAAA</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>A1B2C3D4-1111-2222-3333-44445555AAAA</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>A1B2C3D4-1111-2222-3333-44445555BBBB</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 	</dict>
 	<key>createdby</key>
 	<string>shimizu</string>
@@ -110,6 +136,137 @@
 			<key>version</key>
 			<integer>1</integer>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>keyword</key>
+				<string>menulist-setup</string>
+				<key>subtext</key>
+				<string>Copy Google Apps Script code to clipboard</string>
+				<key>text</key>
+				<string>Menu List Setup</string>
+				<key>withspace</key>
+				<false/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.keyword</string>
+			<key>uid</key>
+			<string>A1B2C3D4-1111-2222-3333-444455559999</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>clipboardtext</key>
+				<string>/**
+ * alfred-menu: Google Apps Script Web App
+ *
+ * セットアップ:
+ * 1. Googleスプレッドシートを開く
+ * 2. 拡張機能 &gt; Apps Script を開く
+ * 3. このコードを貼り付けて保存
+ * 4. デプロイ &gt; 新しいデプロイ &gt; ウェブアプリ
+ *    - 実行ユーザー: 自分
+ *    - アクセス: 全員
+ * 5. 表示されたURLをAlfredのWorkflow設定にコピー
+ */
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var appName = data.appName;
+    var date = data.date;
+    var menuItems = data.menuItems;
+
+    var sheetName = appName + '_' + date;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var sheet = ss.getSheetByName(sheetName);
+    if (sheet) {
+      sheet.clear();
+    } else {
+      sheet = ss.insertSheet(sheetName);
+    }
+
+    var maxDepth = 0;
+    for (var i = 0; i &lt; menuItems.length; i++) {
+      if (menuItems[i].path.length &gt; maxDepth) {
+        maxDepth = menuItems[i].path.length;
+      }
+    }
+
+    var header = ['修飾キー', 'メインキー'];
+    for (var d = 1; d &lt;= maxDepth; d++) {
+      header.push('Level' + d);
+    }
+
+    var rows = [header];
+    for (var j = 0; j &lt; menuItems.length; j++) {
+      var item = menuItems[j];
+      var row = [item.modifiers || '', item.key || ''];
+      for (var k = 0; k &lt; maxDepth; k++) {
+        row.push(item.path[k] || '');
+      }
+      rows.push(row);
+    }
+
+    sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    sheet.getRange(1, 1, 1, rows[0].length).setFontWeight('bold');
+    for (var c = 1; c &lt;= rows[0].length; c++) {
+      sheet.autoResizeColumn(c);
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        sheetName: sheetName,
+        count: menuItems.length
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: error.message
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</string>
+				<key>transient</key>
+				<false/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.clipboard</string>
+			<key>uid</key>
+			<string>A1B2C3D4-1111-2222-3333-44445555AAAA</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<false/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>GAS コードをクリップボードにコピーしました。スプレッドシートの Apps Script に貼り付けてデプロイしてください。</string>
+				<key>title</key>
+				<string>Menu List Setup</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>A1B2C3D4-1111-2222-3333-44445555BBBB</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
 	</array>
 	<key>readme</key>
 	<string></string>
@@ -135,6 +292,27 @@
 			<integer>600</integer>
 			<key>ypos</key>
 			<integer>200</integer>
+		</dict>
+		<key>A1B2C3D4-1111-2222-3333-444455559999</key>
+		<dict>
+			<key>xpos</key>
+			<integer>100</integer>
+			<key>ypos</key>
+			<integer>350</integer>
+		</dict>
+		<key>A1B2C3D4-1111-2222-3333-44445555AAAA</key>
+		<dict>
+			<key>xpos</key>
+			<integer>350</integer>
+			<key>ypos</key>
+			<integer>350</integer>
+		</dict>
+		<key>A1B2C3D4-1111-2222-3333-44445555BBBB</key>
+		<dict>
+			<key>xpos</key>
+			<integer>600</integer>
+			<key>ypos</key>
+			<integer>350</integer>
 		</dict>
 	</dict>
 	<key>userconfigurationconfig</key>
@@ -177,7 +355,7 @@
 		</dict>
 	</array>
 	<key>version</key>
-	<string>2.0.0</string>
+	<string>2.1.0</string>
 	<key>webaddress</key>
 	<string>https://github.com/hirshim/alfred-menu</string>
 </dict>

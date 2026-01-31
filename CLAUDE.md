@@ -19,8 +19,9 @@
 ## インストール手順
 
 1. `.alfredworkflow` をダブルクリックしてインストール
-2. Googleスプレッドシートを開き、拡張機能 > Apps Script で `gas/menulist.gs` のコードを貼り付けてデプロイ
-3. Alfred の Workflow 設定画面で Web App URL を入力
+2. Alfred で `menulist-setup` と入力 → GAS コードがクリップボードにコピーされる
+3. Googleスプレッドシートで 拡張機能 > Apps Script を開き、コピーしたコードを貼り付けてデプロイ
+4. Alfred の Workflow 設定画面で Web App URL を入力
 
 ## メニュー項目の取得仕様
 
@@ -132,15 +133,15 @@
 ```
 alfred-menu/
 ├── CLAUDE.md
-├── info.plist              # Alfred Workflow定義ファイル
+├── info.plist              # Alfred Workflow定義ファイル（GASコードも内蔵）
 ├── icon.png                # Workflowアイコン
-├── gas/
-│   └── menulist.gs         # GAS テンプレート（ユーザーがコピペ）
 └── scripts/
     ├── main.js             # エントリーポイント（JXA）
     ├── menu-reader.js      # メニュー項目取得ロジック
     └── sheets-writer.js    # GAS Web App への HTTP POST
 ```
+
+GAS テンプレートコードは info.plist 内の `menulist-setup` キーワードに紐づく Copy to Clipboard アクションに埋め込まれている。
 
 ## 開発上の注意点
 
@@ -198,5 +199,4 @@ alfred-menu.alfredworkflow (zip)
 ### パッケージに含めないファイル
 
 - `CLAUDE.md` — 開発用ドキュメント
-- `gas/` — GAS テンプレート（リポジトリからコピペして使う）
 - `.git/` — バージョン管理
