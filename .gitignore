@@ -1,0 +1,6 @@
+.DS_Store
+.claude/
+*.alfredworkflow
+credentials.json
+token.json
+config.json
